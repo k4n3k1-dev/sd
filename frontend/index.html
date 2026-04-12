@@ -41,7 +41,6 @@
     if (username === 'admin123') {
       role = 'admin';
     } else {
-      // Check if username exists in vendors table
       const { data: vendor } = await sb
         .from('vendors')
         .select('*')
@@ -57,58 +56,65 @@
       }
     }
     
-    // Create email with VALID domain
     const email = `${username}@campusfood.com`;
     const password = username;
     
-    console.log("Attempting login with:", { email, password, role });
-    
     try {
-      // Try to sign in
-      let { data, error } = await sb.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
-      
-      if (error) {
-        console.log("Login failed, trying signup:", error.message);
-        
-        // User doesn't exist, create them
-        const { data: signUpData, error: signUpError } = await sb.auth.signUp({
+      // For admin: ONLY sign in (don't create)
+      if (role === 'admin') {
+        const { data, error } = await sb.auth.signInWithPassword({
           email: email,
-          password: password,
-          options: { data: { username, role } }
+          password: password
         });
         
-        if (signUpError) throw signUpError;
-        
-        // Create record in appropriate table
-        if (role === 'vendor') {
-          await sb.from('vendors').insert([{ 
-            id: signUpData.user.id, 
-            username: username, 
-            status: 'pending' 
-          }]);
-          toast('Vendor account created. Waiting for admin approval.', 'error');
+        if (error) {
+          toast('Admin account not found. Please check Supabase.', 'error');
+          console.error('Admin login error:', error);
           return;
-        } else if (role === 'student') {
-          await sb.from('students').insert([{ 
-            id: signUpData.user.id, 
-            username: username 
-          }]);
         }
         
-        // Store session info
         sessionStorage.setItem("username", username);
         sessionStorage.setItem("role", role);
+        
       } else {
-        // Login successful
-        console.log("Login successful!");
-        sessionStorage.setItem("username", username);
-        sessionStorage.setItem("role", role);
+        // For students/vendors: try sign in, then sign up
+        let { data, error } = await sb.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+        
+        if (error) {
+          const { data: signUpData, error: signUpError } = await sb.auth.signUp({
+            email: email,
+            password: password,
+            options: { data: { username, role } }
+          });
+          
+          if (signUpError) throw signUpError;
+          
+          if (role === 'vendor') {
+            await sb.from('vendors').insert([{ 
+              id: signUpData.user.id, 
+              username: username, 
+              status: 'pending' 
+            }]);
+            toast('Vendor account created. Waiting for admin approval.', 'error');
+            return;
+          } else if (role === 'student') {
+            await sb.from('students').insert([{ 
+              id: signUpData.user.id, 
+              username: username 
+            }]);
+          }
+          
+          sessionStorage.setItem("username", username);
+          sessionStorage.setItem("role", role);
+        } else {
+          sessionStorage.setItem("username", username);
+          sessionStorage.setItem("role", role);
+        }
       }
       
-      // Redirect based on role
       const routes = {
         admin:   "dashboard_admin.html",
         vendor:  "dashboard_vendor.html",
