@@ -17,7 +17,7 @@
 
     <div class="form-group">
       <label for="userInput">Username</label>
-      <input id="userInput" type="text" placeholder="admin / vendor / student" autocomplete="off">
+      <input id="userInput" type="text" placeholder="admin123 / vendor / student" autocomplete="off">
     </div>
 
     <button class="btn btn-primary btn-full" id="loginBtn">Login</button>
@@ -38,7 +38,7 @@
     // Determine role
     let role = 'student';
     
-    if (username === 'admin') {
+    if (username === 'admin123') {
       role = 'admin';
     } else {
       // Check if username exists in vendors table
