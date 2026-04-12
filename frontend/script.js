@@ -5,6 +5,9 @@ const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';  // ← PASTE YOUR ey... KEY HER
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ==================== GLOBAL VARIABLES ====================
+let cart = [];
+
 // ==================== HELPERS ====================
 function toast(msg, type = "success") {
   const el = document.getElementById("toast");
@@ -19,142 +22,545 @@ function logout() {
   window.location.href = "index.html";
 }
 
-// ==================== LOGIN ====================
-async function loginWithUsername(username) {
-  // Determine role
-  let role = 'student';
+// Get current vendor ID from username
+async function getVendorId(username) {
+  const { data, error } = await supabase
+    .from('vendors')
+    .select('id')
+    .eq('username', username)
+    .single();
   
-  if (username === 'admin') {
-    role = 'admin';
-  } else {
-    // Check if username exists in vendors table
-    const { data: vendor } = await supabase
-      .from('vendors')
-      .select('*')
-      .eq('username', username)
-      .single();
-    
-    if (vendor) {
-      role = 'vendor';
-      // Check if vendor is approved
-      if (vendor.status !== 'approved') {
-        toast('Your account is pending admin approval', 'error');
-        return null;
-      }
-    }
-  }
-  
-  // Create email for Supabase Auth
-  const email = `${username}@${role}.local`;
-  const password = username; // Simple password for demo
-  
-  try {
-    // Try to sign in
-    let { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
-    
-    if (error) {
-      // User doesn't exist, create them
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: { data: { username, role } }
-      });
-      
-      if (signUpError) throw signUpError;
-      
-      // Create record in appropriate table
-      if (role === 'vendor') {
-        await supabase.from('vendors').insert([{ 
-          id: signUpData.user.id, 
-          username: username, 
-          status: 'pending' 
-        }]);
-        toast('Vendor account created. Waiting for admin approval.', 'error');
-        return null;
-      } else if (role === 'student') {
-        await supabase.from('students').insert([{ 
-          id: signUpData.user.id, 
-          username: username 
-        }]);
-      }
-      
-      // Login again after creation
-      const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
-      
-      if (retryError) throw retryError;
-      
-      sessionStorage.setItem("username", username);
-      sessionStorage.setItem("role", role);
-      return { username, role };
-    }
-    
-    // Login successful
-    sessionStorage.setItem("username", username);
-    sessionStorage.setItem("role", role);
-    return { username, role };
-    
-  } catch (err) {
-    console.error('Login error:', err);
-    toast(err.message, 'error');
-    return null;
-  }
+  if (error) return null;
+  return data.id;
 }
 
-// Login button handler
-document.getElementById("loginBtn")?.addEventListener("click", async () => {
-  const username = document.getElementById("userInput").value.toLowerCase().trim();
-  if (!username) {
-    toast("Enter your username", "error");
+// Get current student ID from username
+async function getStudentId(username) {
+  const { data, error } = await supabase
+    .from('students')
+    .select('id')
+    .eq('username', username)
+    .single();
+  
+  if (error) return null;
+  return data.id;
+}
+
+// ==================== ADMIN: VENDOR CONTROL ====================
+async function loadVendors() {
+  const tbody = document.getElementById('vendorBody');
+  if (!tbody) return;
+
+  const { data, error } = await supabase
+    .from('vendors')
+    .select('*')
+    .order('created_at', 'asc');
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--danger)">Failed to load</td></tr>`;
     return;
   }
 
-  const user = await loginWithUsername(username);
-  if (!user) return;
+  if (!data || data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--muted)">No vendors yet</td></tr>`;
+    return;
+  }
 
-  const routes = {
-    admin:   "dashboard_admin.html",
-    vendor:  "dashboard_vendor.html",
-    student: "dashboard_student.html",
-  };
-  window.location.href = routes[user.role] || "index.html";
-});
+  tbody.innerHTML = data.map(v => `
+    <tr>
+      <td>${v.username}</td>
+      <td><span class="status status-${v.status}">${v.status}</span></td>
+      <td style="display:flex; gap:0.5rem;">
+        ${v.status !== 'approved' 
+          ? `<button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="updateVendorStatus('${v.id}', 'approved')">Approve</button>`
+          : `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="updateVendorStatus('${v.id}', 'suspended')">Suspend</button>`
+        }
+        <button class="btn btn-sm btn-danger" onclick="deleteVendor('${v.id}')">Remove</button>
+      </td>
+    </tr>
+  `).join('');
+}
 
-// ==================== SHARED FUNCTIONS (used by dashboards) ====================
-// Make these available globally
-window.supabase = supabase;
-window.toast = toast;
-window.logout = logout;
-
-// Student functions
-window.addToCartGlobal = (vendorId, itemId, itemName, price) => {
-  let cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
-  cart.push({ vendorId, itemId, name: itemName, price });
-  sessionStorage.setItem('cart', JSON.stringify(cart));
-  toast(`${itemName} added to cart`);
-};
-
-window.getCart = () => {
-  return JSON.parse(sessionStorage.getItem('cart') || '[]');
-};
-
-window.clearCart = () => {
-  sessionStorage.removeItem('cart');
-};
-
-// Vendor functions
-window.loadVendorData = async (vendorUsername) => {
-  // Get vendor ID
-  const { data: vendor } = await supabase
+async function updateVendorStatus(vendorId, status) {
+  const { error } = await supabase
     .from('vendors')
-    .select('id')
-    .eq('username', vendorUsername)
+    .update({ status, updated_at: new Date() })
+    .eq('id', vendorId);
+
+  if (error) {
+    toast('Update failed', 'error');
+  } else {
+    toast(`Vendor ${status}`);
+    loadVendors();
+  }
+}
+
+async function deleteVendor(vendorId) {
+  if (!confirm('Remove this vendor?')) return;
+
+  const { error } = await supabase
+    .from('vendors')
+    .delete()
+    .eq('id', vendorId);
+
+  if (error) {
+    toast('Delete failed', 'error');
+  } else {
+    toast('Vendor removed');
+    loadVendors();
+  }
+}
+
+async function createVendor() {
+  const input = document.getElementById('newVendor');
+  const username = input?.value.trim();
+
+  if (!username) {
+    toast('Enter a username', 'error');
+    return;
+  }
+
+  // Check if vendor exists
+  const { data: existing } = await supabase
+    .from('vendors')
+    .select('username')
+    .eq('username', username)
     .single();
+
+  if (existing) {
+    toast('Vendor already exists', 'error');
+    return;
+  }
+
+  // Create auth user
+  const email = `${username}@vendor.local`;
+  const password = username;
+
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email: email,
+    password: password
+  });
+
+  if (authError) {
+    toast('Error creating vendor: ' + authError.message, 'error');
+    return;
+  }
+
+  // Insert into vendors table
+  const { error: insertError } = await supabase
+    .from('vendors')
+    .insert([{ id: authData.user.id, username: username, status: 'pending' }]);
+
+  if (insertError) {
+    toast('Error saving vendor', 'error');
+  } else {
+    toast(`Vendor ${username} created (pending approval)`);
+    input.value = '';
+    loadVendors();
+  }
+}
+
+// ==================== VENDOR: MENU MANAGEMENT ====================
+async function loadVendorMenu() {
+  const container = document.getElementById('vendorMenu');
+  if (!container) return;
+
+  const username = sessionStorage.getItem('username');
+  const vendorId = await getVendorId(username);
+
+  if (!vendorId) {
+    container.innerHTML = '<p style="color:var(--danger)">Vendor not found</p>';
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('menu')
+    .select('*')
+    .eq('vendor_id', vendorId)
+    .order('created_at', 'asc');
+
+  if (error) {
+    container.innerHTML = '<p style="color:var(--danger)">Failed to load menu</p>';
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    container.innerHTML = '<p style="color:var(--muted)">No items yet. Add one above.</p>';
+    return;
+  }
+
+  container.innerHTML = data.map(item => `
+    <div class="menu-item ${item.status === 'sold_out' ? 'sold-out' : ''}">
+      <div class="item-name">${item.name}</div>
+      <div class="item-price">R${item.price}</div>
+      ${item.status === 'sold_out' ? '<span class="badge">Sold Out</span>' : ''}
+      <div class="item-actions">
+        <button class="btn btn-sm" style="background:var(--teal-light);color:var(--teal-dark)"
+          onclick="toggleSoldOut(${item.id}, ${item.status === 'sold_out'})">
+          ${item.status === 'sold_out' ? 'Mark Available' : 'Mark Sold Out'}
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMenuItem(${item.id})">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addMenuItem() {
+  const nameEl = document.getElementById('itemName');
+  const priceEl = document.getElementById('itemPrice');
+  const name = nameEl?.value.trim();
+  const price = Number(priceEl?.value);
+  const username = sessionStorage.getItem('username');
+
+  if (!name || !price) {
+    toast('Fill in both fields', 'error');
+    return;
+  }
+
+  const vendorId = await getVendorId(username);
+  if (!vendorId) {
+    toast('Vendor not found', 'error');
+    return;
+  }
+
+  const { error } = await supabase
+    .from('menu')
+    .insert([{ vendor_id: vendorId, name, price, status: 'available' }]);
+
+  if (error) {
+    toast('Failed to add item: ' + error.message, 'error');
+  } else {
+    toast('Item added!');
+    nameEl.value = '';
+    priceEl.value = '';
+    loadVendorMenu();
+  }
+}
+
+async function toggleSoldOut(itemId, currentlySoldOut) {
+  const newStatus = currentlySoldOut ? 'available' : 'sold_out';
   
-  return vendor;
-};
+  const { error } = await supabase
+    .from('menu')
+    .update({ status: newStatus })
+    .eq('id', itemId);
+
+  if (error) {
+    toast('Update failed', 'error');
+  } else {
+    toast(currentlySoldOut ? 'Item available again' : 'Marked as sold out');
+    loadVendorMenu();
+  }
+}
+
+async function deleteMenuItem(itemId) {
+  if (!confirm('Delete this item?')) return;
+
+  const { error } = await supabase
+    .from('menu')
+    .delete()
+    .eq('id', itemId);
+
+  if (error) {
+    toast('Delete failed', 'error');
+  } else {
+    toast('Item deleted');
+    loadVendorMenu();
+  }
+}
+
+// ==================== VENDOR: ORDERS ====================
+async function loadVendorOrders() {
+  const tbody = document.getElementById('ordersBody');
+  if (!tbody) return;
+
+  const username = sessionStorage.getItem('username');
+  const vendorId = await getVendorId(username);
+
+  if (!vendorId) {
+    tbody.innerHTML = '<tr><td colspan="6">Vendor not found</td></tr>';
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('vendor_id', vendorId)
+    .order('created_at', 'desc');
+
+  if (error) {
+    tbody.innerHTML = '<tr><td colspan="6">Failed to load orders</td></tr>';
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No orders yet</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(order => `
+    <tr>
+      <td>#${order.order_number || order.id}</td>
+      <td>${order.student_username}</td>
+      <td>${order.items.map(i => i.name).join(', ')}</td>
+      <td>R${order.total_price}</td>
+      <td><span class="status status-${order.status}">${order.status}</span></td>
+      <td>
+        <select onchange="updateOrderStatus(${order.id}, this.value)" style="padding:4px;border-radius:4px;">
+          <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
+          <option value="confirmed" ${order.status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+          <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Completed</option>
+          <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+        </select>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function updateOrderStatus(orderId, newStatus) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ status: newStatus })
+    .eq('id', orderId);
+
+  if (error) {
+    toast('Update failed', 'error');
+  } else {
+    toast(`Order status updated to ${newStatus}`);
+    loadVendorOrders();
+  }
+}
+
+// ==================== STUDENT: MENU & CART ====================
+async function loadStudentMenu() {
+  const container = document.getElementById('menuContainer');
+  if (!container) return;
+
+  // Get all approved vendors with their available menu
+  const { data: vendors, error: vendorError } = await supabase
+    .from('vendors')
+    .select('id, username')
+    .eq('status', 'approved');
+
+  if (vendorError || !vendors) {
+    container.innerHTML = '<p style="color:var(--danger)">Failed to load menu</p>';
+    return;
+  }
+
+  let allMenu = [];
+  for (const vendor of vendors) {
+    const { data: menu, error: menuError } = await supabase
+      .from('menu')
+      .select('*')
+      .eq('vendor_id', vendor.id)
+      .eq('status', 'available');
+
+    if (!menuError && menu) {
+      allMenu.push(...menu.map(item => ({ ...item, vendor_name: vendor.username, vendor_id: vendor.id })));
+    }
+  }
+
+  if (allMenu.length === 0) {
+    container.innerHTML = '<p style="color:var(--muted)">No menu available yet.</p>';
+    return;
+  }
+
+  container.innerHTML = allMenu.map(item => `
+    <div class="menu-item">
+      <div class="item-name">${item.name}</div>
+      <div class="item-price">R${item.price}</div>
+      <div style="font-size:12px;color:var(--muted)">${item.vendor_name}</div>
+      <button class="btn btn-primary btn-sm" onclick="addToCart('${item.id}', '${item.name}', ${item.price}, '${item.vendor_id}')">
+        + Add to Cart
+      </button>
+    </div>
+  `).join('');
+  
+  // Load cart from sessionStorage
+  const savedCart = sessionStorage.getItem('cart');
+  if (savedCart) {
+    cart = JSON.parse(savedCart);
+    updateCartDisplay();
+  }
+}
+
+function addToCart(itemId, name, price, vendorId) {
+  cart.push({ id: itemId, name, price, vendor_id: vendorId });
+  sessionStorage.setItem('cart', JSON.stringify(cart));
+  updateCartDisplay();
+  toast(`${name} added to cart`);
+}
+
+function removeFromCart(index) {
+  cart.splice(index, 1);
+  sessionStorage.setItem('cart', JSON.stringify(cart));
+  updateCartDisplay();
+}
+
+function updateCartDisplay() {
+  const cartPanel = document.getElementById('cartPanel');
+  const cartItems = document.getElementById('cartItems');
+  const cartTotalSpan = document.getElementById('cartTotal');
+
+  if (!cartPanel) return;
+
+  if (cart.length === 0) {
+    cartPanel.style.display = 'none';
+    return;
+  }
+
+  cartPanel.style.display = 'block';
+  
+  cartItems.innerHTML = cart.map((item, idx) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid #e5e7eb;">
+      <span>${item.name}</span>
+      <span style="display:flex;align-items:center;gap:0.75rem;">
+        R${item.price}
+        <button class="btn btn-danger btn-sm" onclick="removeFromCart(${idx})">✕</button>
+      </span>
+    </div>
+  `).join('');
+
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
+  cartTotalSpan.textContent = `R${total}`;
+}
+
+async function placeOrder() {
+  if (cart.length === 0) {
+    toast('Your cart is empty', 'error');
+    return;
+  }
+
+  const username = sessionStorage.getItem('username');
+  const studentId = await getStudentId(username);
+
+  if (!studentId) {
+    toast('Student not found. Please login again.', 'error');
+    return;
+  }
+
+  // Check if cart has items from multiple vendors
+  const vendorIds = [...new Set(cart.map(item => item.vendor_id))];
+  if (vendorIds.length > 1) {
+    toast('Please order from one vendor at a time', 'error');
+    return;
+  }
+
+  const vendorId = vendorIds[0];
+  const totalPrice = cart.reduce((sum, item) => sum + item.price, 0);
+  const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  const { error } = await supabase
+    .from('orders')
+    .insert([{
+      order_number: orderNumber,
+      student_id: studentId,
+      student_username: username,
+      vendor_id: vendorId,
+      items: cart.map(item => ({ id: item.id, name: item.name, price: item.price })),
+      total_price: totalPrice,
+      status: 'pending'
+    }]);
+
+  if (error) {
+    toast('Failed to place order: ' + error.message, 'error');
+  } else {
+    toast('Order placed! 🎉');
+    cart = [];
+    sessionStorage.removeItem('cart');
+    updateCartDisplay();
+  }
+}
+
+// ==================== STUDENT: ORDER HISTORY ====================
+async function loadStudentOrderHistory() {
+  const tbody = document.getElementById('historyBody');
+  if (!tbody) return;
+
+  const username = sessionStorage.getItem('username');
+  const studentId = await getStudentId(username);
+
+  if (!studentId) {
+    tbody.innerHTML = '<tr><td colspan="6">Student not found</td></tr>';
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, vendors(username)')
+    .eq('student_id', studentId)
+    .order('created_at', 'desc');
+
+  if (error) {
+    tbody.innerHTML = '<tr><td colspan="6">Failed to load orders</td></tr>';
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No orders yet</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(order => `
+    <tr>
+      <td>#${order.order_number || order.id}</td>
+      <td>${order.vendors?.username || 'Unknown'}</td>
+      <td>${order.items.map(i => i.name).join(', ')}</td>
+      <td>R${order.total_price}</td>
+      <td><span class="status status-${order.status}">${order.status}</span></td>
+      <td>${new Date(order.created_at).toLocaleDateString()}</td>
+    </tr>
+  `).join('');
+}
+
+// ==================== ADMIN: ALL ORDERS ====================
+async function loadAllOrders() {
+  const tbody = document.getElementById('allOrdersBody');
+  if (!tbody) return;
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, vendors(username)')
+    .order('created_at', 'desc');
+
+  if (error) {
+    tbody.innerHTML = '<tr><td colspan="7">Failed to load orders</td></tr>';
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No orders yet</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(order => `
+    <tr>
+      <td>#${order.order_number || order.id}</td>
+      <td>${order.vendors?.username || 'Unknown'}</td>
+      <td>${order.student_username}</td>
+      <td>${order.items.map(i => i.name).join(', ')}</td>
+      <td>R${order.total_price}</td>
+      <td><span class="status status-${order.status}">${order.status}</span></td>
+      <td>${new Date(order.created_at).toLocaleDateString()}</td>
+    </tr>
+  `).join('');
+}
+
+// ==================== MAKE FUNCTIONS GLOBAL ====================
+window.logout = logout;
+window.loadVendors = loadVendors;
+window.updateVendorStatus = updateVendorStatus;
+window.deleteVendor = deleteVendor;
+window.createVendor = createVendor;
+window.loadVendorMenu = loadVendorMenu;
+window.addMenuItem = addMenuItem;
+window.toggleSoldOut = toggleSoldOut;
+window.deleteMenuItem = deleteMenuItem;
+window.loadVendorOrders = loadVendorOrders;
+window.updateOrderStatus = updateOrderStatus;
+window.loadStudentMenu = loadStudentMenu;
+window.addToCart = addToCart;
+window.removeFromCart = removeFromCart;
+window.placeOrder = placeOrder;
+window.loadStudentOrderHistory = loadStudentOrderHistory;
+window.loadAllOrders = loadAllOrders;
