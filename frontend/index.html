@@ -110,8 +110,15 @@
 
       if (error) throw error;
 
+      // Get user data from metadata
+      let role = data.user.user_metadata?.role || 'student';
+      
+      // Override for admin email (backup in case metadata is missing)
+      if (email === 'admin123@campusfood.com') {
+        role = 'admin';
+      }
+      
       const username = data.user.user_metadata?.username || email.split('@')[0];
-      const role = data.user.user_metadata?.role || 'student';
 
       sessionStorage.setItem("userId", data.user.id);
       sessionStorage.setItem("email", email);
