@@ -26,6 +26,97 @@
 
 <div id="toast"></div>
 <script src="script.js"></script>
+<script>
+  // Login handler for Supabase
+  document.getElementById("loginBtn")?.addEventListener("click", async () => {
+    const username = document.getElementById("userInput").value.toLowerCase().trim();
+    if (!username) {
+      toast("Enter your username", "error");
+      return;
+    }
+
+    // Determine role
+    let role = 'student';
+    
+    if (username === 'admin') {
+      role = 'admin';
+    } else {
+      // Check if username exists in vendors table
+      const { data: vendor } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('username', username)
+        .single();
+      
+      if (vendor) {
+        role = 'vendor';
+        if (vendor.status !== 'approved') {
+          toast('Your account is pending admin approval', 'error');
+          return;
+        }
+      }
+    }
+    
+    // Create email for Supabase Auth
+    const email = `${username}@${role}.local`;
+    const password = username;
+    
+    try {
+      // Try to sign in
+      let { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+      
+      if (error) {
+        // User doesn't exist, create them
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: email,
+          password: password,
+          options: { data: { username, role } }
+        });
+        
+        if (signUpError) throw signUpError;
+        
+        // Create record in appropriate table
+        if (role === 'vendor') {
+          await supabase.from('vendors').insert([{ 
+            id: signUpData.user.id, 
+            username: username, 
+            status: 'pending' 
+          }]);
+          toast('Vendor account created. Waiting for admin approval.', 'error');
+          return;
+        } else if (role === 'student') {
+          await supabase.from('students').insert([{ 
+            id: signUpData.user.id, 
+            username: username 
+          }]);
+        }
+        
+        // Store session info
+        sessionStorage.setItem("username", username);
+        sessionStorage.setItem("role", role);
+      } else {
+        // Login successful
+        sessionStorage.setItem("username", username);
+        sessionStorage.setItem("role", role);
+      }
+      
+      // Redirect based on role
+      const routes = {
+        admin:   "dashboard_admin.html",
+        vendor:  "dashboard_vendor.html",
+        student: "dashboard_student.html",
+      };
+      window.location.href = routes[role];
+      
+    } catch (err) {
+      console.error('Login error:', err);
+      toast(err.message || 'Login failed', 'error');
+    }
+  });
+</script>
 
 </body>
 </html>
