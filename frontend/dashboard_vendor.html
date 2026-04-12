@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vendor Dashboard – Campus Food</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <span class="brand">🍔 Campus Food &mdash; Vendor</span>
+  <button onclick="logout()">Logout</button>
+</nav>
+
+<div class="page">
+  <h2>Welcome, <span id="vendorName"></span></h2>
+
+  <div class="cards">
+    <a class="card" href="vendor_menu.html">
+      <div class="icon">🍽️</div>
+      <div class="label">Manage Menu</div>
+    </a>
+    <a class="card" href="vendor_orders.html">
+      <div class="icon">📦</div>
+      <div class="label">My Orders</div>
+    </a>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="script.js"></script>
+<script>
+  document.getElementById('vendorName').textContent =
+    sessionStorage.getItem('username') || 'Vendor';
+</script>
+
+</body>
+</html>

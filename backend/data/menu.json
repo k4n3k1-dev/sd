@@ -1,0 +1,10 @@
+[
+  {
+    "vendor": "vendor",
+    "items": [
+      { "name": "Burger",   "price": 50, "soldOut": false },
+      { "name": "Chips",    "price": 20, "soldOut": false },
+      { "name": "Cooldrink","price": 15, "soldOut": false }
+    ]
+  }
+]

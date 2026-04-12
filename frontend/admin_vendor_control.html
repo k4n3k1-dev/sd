@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vendor Control – Campus Food</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <span class="brand">🏪 Vendor Control</span>
+  <button onclick="logout()">Logout</button>
+</nav>
+
+<div class="page">
+  <div class="panel">
+    <h2>Add Vendor Account</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="newVendor">Username</label>
+        <input id="newVendor" type="text" placeholder="e.g. vendor2">
+      </div>
+      <button class="btn btn-primary" onclick="createVendor()">+ Add Vendor</button>
+    </div>
+  </div>
+
+  <h2>All Vendors</h2>
+  <div class="panel" style="padding:0; overflow:hidden;">
+    <table id="vendorTable">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="vendorBody">
+        <tr><td colspan="3" style="text-align:center;padding:1.5rem;color:var(--muted)">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="script.js"></script>
+<script>
+  window.addEventListener('load', loadVendors);
+</script>
+
+</body>
+</html>

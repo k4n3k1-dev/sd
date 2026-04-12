@@ -1,0 +1,5 @@
+[
+  { "username": "admin",   "role": "admin",   "status": "approved" },
+  { "username": "vendor",  "role": "vendor",  "status": "approved" },
+  { "username": "student", "role": "student", "status": "approved" }
+]

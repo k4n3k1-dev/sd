@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Dashboard – Campus Food</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <span class="brand">🍔 Campus Food &mdash; Student</span>
+  <button onclick="logout()">Logout</button>
+</nav>
+
+<div class="page">
+  <h2>Welcome, <span id="studentName"></span></h2>
+
+  <div class="cards">
+    <a class="card" href="student_orders.html">
+      <div class="icon">🛒</div>
+      <div class="label">Browse &amp; Order</div>
+    </a>
+    <a class="card" href="student_history.html">
+      <div class="icon">🕐</div>
+      <div class="label">Order History</div>
+    </a>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="script.js"></script>
+<script>
+  document.getElementById('studentName').textContent =
+    sessionStorage.getItem('username') || 'Student';
+</script>
+
+</body>
+</html>

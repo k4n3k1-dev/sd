@@ -1,0 +1,17 @@
+{
+  "name": "gut-backend",
+  "version": "1.0.0",
+  "description": "Campus Food Ordering System – API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "morgan": "^1.10.1"
+  }
+}

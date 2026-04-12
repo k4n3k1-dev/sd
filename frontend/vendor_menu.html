@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menu Management – Campus Food</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <span class="brand">🍽️ Menu Management</span>
+  <button onclick="logout()">Logout</button>
+</nav>
+
+<div class="page">
+  <div class="panel">
+    <h2>Add Menu Item</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="itemName">Item Name</label>
+        <input id="itemName" type="text" placeholder="e.g. Burger">
+      </div>
+      <div class="form-group">
+        <label for="itemPrice">Price (R)</label>
+        <input id="itemPrice" type="number" min="0" placeholder="e.g. 50">
+      </div>
+      <button class="btn btn-primary" onclick="addMenuItem()">+ Add Item</button>
+    </div>
+  </div>
+
+  <h2>Your Current Menu</h2>
+  <div id="vendorMenu" class="menu-grid">
+    <p style="color:var(--muted)">Loading…</p>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="script.js"></script>
+<script>
+  window.addEventListener('load', loadVendorMenu);
+</script>
+
+</body>
+</html>

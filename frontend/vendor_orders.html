@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incoming Orders – Campus Food</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <span class="brand">📦 Incoming Orders</span>
+  <button onclick="logout()">Logout</button>
+</nav>
+
+<div class="page">
+  <h2>Orders for <span id="vendorLabel"></span></h2>
+  <div class="panel" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Student</th>
+          <th>Items</th>
+          <th>Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="ordersBody">
+        <tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--muted)">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="script.js"></script>
+<script>
+  const vname = sessionStorage.getItem('username') || '';
+  document.getElementById('vendorLabel').textContent = vname;
+
+  window.addEventListener('load', async () => {
+    const tbody = document.getElementById('ordersBody');
+    try {
+      const orders = await apiFetch(`/orders/${vname}`);
+      if (!orders.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--muted)">No orders yet</td></tr>';
+        return;
+      }
+      tbody.innerHTML = orders.map(o => `
+        <tr>
+          <td>#${String(o.id).slice(-5)}</td>
+          <td>${o.student}</td>
+          <td>${o.items.map(i => i.name).join(', ')}</td>
+          <td>R${o.total}</td>
+          <td><span class="status status-${o.status}">${o.status}</span></td>
+        </tr>
+      `).join('');
+    } catch {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger)">Failed to load orders</td></tr>';
+    }
+  });
+</script>
+
+</body>
+</html>
