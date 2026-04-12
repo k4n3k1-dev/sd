@@ -11,7 +11,10 @@
 
 <nav class="navbar">
   <span class="brand">🍽️ Menu Management</span>
-  <button onclick="logout()">Logout</button>
+  <div class="user-info" style="display: flex; gap: 1rem; align-items: center;">
+    <span>👤 <span id="vendorName"></span></span>
+    <button onclick="logout()">Logout</button>
+  </div>
 </nav>
 
 <div class="page">
@@ -39,6 +42,9 @@
 <div id="toast"></div>
 <script src="script.js"></script>
 <script>
+  const username = sessionStorage.getItem('username') || 'Vendor';
+  document.getElementById('vendorName').textContent = username;
+
   window.addEventListener('load', loadVendorMenu);
 </script>
 
