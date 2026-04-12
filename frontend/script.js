@@ -1,13 +1,9 @@
 // ==================== SUPABASE CONFIGURATION ====================
-// ⚠️ REPLACE WITH YOUR ACTUAL SUPABASE KEYS ⚠️
 const SUPABASE_URL = 'https://mslvqduxmkuusuyaewej.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zbHZxZHV4bWt1dXN1eWFld2VqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5ODkzNDcsImV4cCI6MjA5MTU2NTM0N30.VxvR39nI5lNK_JZ6fwctQJgAH06YhbCTd8bXuiLpJgs';
 
-// Check if supabase already exists, if not create it
-if (!window.supabaseClient) {
-  window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
-const supabase = window.supabaseClient;
+// Use a different variable name to avoid conflict
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ==================== GLOBAL VARIABLES ====================
 let cart = [];
@@ -26,9 +22,8 @@ function logout() {
   window.location.href = "index.html";
 }
 
-// Get current vendor ID from username
 async function getVendorId(username) {
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('vendors')
     .select('id')
     .eq('username', username)
@@ -38,9 +33,8 @@ async function getVendorId(username) {
   return data.id;
 }
 
-// Get current student ID from username
 async function getStudentId(username) {
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('students')
     .select('id')
     .eq('username', username)
@@ -55,7 +49,7 @@ async function loadVendors() {
   const tbody = document.getElementById('vendorBody');
   if (!tbody) return;
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('vendors')
     .select('*')
     .order('created_at', 'asc');
@@ -86,7 +80,7 @@ async function loadVendors() {
 }
 
 async function updateVendorStatus(vendorId, status) {
-  const { error } = await supabase
+  const { error } = await sb
     .from('vendors')
     .update({ status, updated_at: new Date() })
     .eq('id', vendorId);
@@ -102,7 +96,7 @@ async function updateVendorStatus(vendorId, status) {
 async function deleteVendor(vendorId) {
   if (!confirm('Remove this vendor?')) return;
 
-  const { error } = await supabase
+  const { error } = await sb
     .from('vendors')
     .delete()
     .eq('id', vendorId);
@@ -124,8 +118,7 @@ async function createVendor() {
     return;
   }
 
-  // Check if vendor exists
-  const { data: existing } = await supabase
+  const { data: existing } = await sb
     .from('vendors')
     .select('username')
     .eq('username', username)
@@ -136,11 +129,10 @@ async function createVendor() {
     return;
   }
 
-  // Create auth user
   const email = `${username}@vendor.local`;
   const password = username;
 
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  const { data: authData, error: authError } = await sb.auth.signUp({
     email: email,
     password: password
   });
@@ -150,8 +142,7 @@ async function createVendor() {
     return;
   }
 
-  // Insert into vendors table
-  const { error: insertError } = await supabase
+  const { error: insertError } = await sb
     .from('vendors')
     .insert([{ id: authData.user.id, username: username, status: 'pending' }]);
 
@@ -177,7 +168,7 @@ async function loadVendorMenu() {
     return;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('menu')
     .select('*')
     .eq('vendor_id', vendorId)
@@ -227,7 +218,7 @@ async function addMenuItem() {
     return;
   }
 
-  const { error } = await supabase
+  const { error } = await sb
     .from('menu')
     .insert([{ vendor_id: vendorId, name, price, status: 'available' }]);
 
@@ -244,7 +235,7 @@ async function addMenuItem() {
 async function toggleSoldOut(itemId, currentlySoldOut) {
   const newStatus = currentlySoldOut ? 'available' : 'sold_out';
   
-  const { error } = await supabase
+  const { error } = await sb
     .from('menu')
     .update({ status: newStatus })
     .eq('id', itemId);
@@ -260,7 +251,7 @@ async function toggleSoldOut(itemId, currentlySoldOut) {
 async function deleteMenuItem(itemId) {
   if (!confirm('Delete this item?')) return;
 
-  const { error } = await supabase
+  const { error } = await sb
     .from('menu')
     .delete()
     .eq('id', itemId);
@@ -286,7 +277,7 @@ async function loadVendorOrders() {
     return;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('orders')
     .select('*')
     .eq('vendor_id', vendorId)
@@ -322,7 +313,7 @@ async function loadVendorOrders() {
 }
 
 async function updateOrderStatus(orderId, newStatus) {
-  const { error } = await supabase
+  const { error } = await sb
     .from('orders')
     .update({ status: newStatus })
     .eq('id', orderId);
@@ -340,8 +331,7 @@ async function loadStudentMenu() {
   const container = document.getElementById('menuContainer');
   if (!container) return;
 
-  // Get all approved vendors with their available menu
-  const { data: vendors, error: vendorError } = await supabase
+  const { data: vendors, error: vendorError } = await sb
     .from('vendors')
     .select('id, username')
     .eq('status', 'approved');
@@ -353,7 +343,7 @@ async function loadStudentMenu() {
 
   let allMenu = [];
   for (const vendor of vendors) {
-    const { data: menu, error: menuError } = await supabase
+    const { data: menu, error: menuError } = await sb
       .from('menu')
       .select('*')
       .eq('vendor_id', vendor.id)
@@ -380,7 +370,6 @@ async function loadStudentMenu() {
     </div>
   `).join('');
   
-  // Load cart from sessionStorage
   const savedCart = sessionStorage.getItem('cart');
   if (savedCart) {
     cart = JSON.parse(savedCart);
@@ -443,7 +432,6 @@ async function placeOrder() {
     return;
   }
 
-  // Check if cart has items from multiple vendors
   const vendorIds = [...new Set(cart.map(item => item.vendor_id))];
   if (vendorIds.length > 1) {
     toast('Please order from one vendor at a time', 'error');
@@ -454,7 +442,7 @@ async function placeOrder() {
   const totalPrice = cart.reduce((sum, item) => sum + item.price, 0);
   const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-  const { error } = await supabase
+  const { error } = await sb
     .from('orders')
     .insert([{
       order_number: orderNumber,
@@ -489,7 +477,7 @@ async function loadStudentOrderHistory() {
     return;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('orders')
     .select('*, vendors(username)')
     .eq('student_id', studentId)
@@ -522,7 +510,7 @@ async function loadAllOrders() {
   const tbody = document.getElementById('allOrdersBody');
   if (!tbody) return;
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('orders')
     .select('*, vendors(username)')
     .order('created_at', 'desc');
