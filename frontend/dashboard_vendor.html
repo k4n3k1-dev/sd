@@ -11,11 +11,14 @@
 
 <nav class="navbar">
   <span class="brand">🍔 Campus Food — Vendor</span>
-  <button onclick="logout()">Logout</button>
+  <div class="user-info" style="display: flex; gap: 1rem; align-items: center;">
+    <span>👤 <span id="vendorName"></span></span>
+    <button onclick="logout()">Logout</button>
+  </div>
 </nav>
 
 <div class="page">
-  <h2>Welcome, <span id="vendorName"></span></h2>
+  <h2>Welcome, <span id="vendorNameWelcome"></span></h2>
 
   <div class="cards">
     <a class="card" href="vendor_menu.html">
@@ -32,8 +35,14 @@
 <div id="toast"></div>
 <script src="script.js"></script>
 <script>
-  document.getElementById('vendorName').textContent =
-    sessionStorage.getItem('username') || 'Vendor';
+  const username = sessionStorage.getItem('username') || 'Vendor';
+  document.getElementById('vendorName').textContent = username;
+  document.getElementById('vendorNameWelcome').textContent = username;
+
+  const role = sessionStorage.getItem('role');
+  if (role !== 'vendor') {
+    window.location.href = 'index.html';
+  }
 </script>
 
 </body>
