@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Incoming Orders – Campus Food</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -24,10 +25,11 @@
           <th>Items</th>
           <th>Total</th>
           <th>Status</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody id="ordersBody">
-        <tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--muted)">Loading…</td></tr>
+        <tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted)">Loading…</td></tr>
       </tbody>
     </table>
   </div>
@@ -38,28 +40,7 @@
 <script>
   const vname = sessionStorage.getItem('username') || '';
   document.getElementById('vendorLabel').textContent = vname;
-
-  window.addEventListener('load', async () => {
-    const tbody = document.getElementById('ordersBody');
-    try {
-      const orders = await apiFetch(`/orders/${vname}`);
-      if (!orders.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--muted)">No orders yet</td></tr>';
-        return;
-      }
-      tbody.innerHTML = orders.map(o => `
-        <tr>
-          <td>#${String(o.id).slice(-5)}</td>
-          <td>${o.student}</td>
-          <td>${o.items.map(i => i.name).join(', ')}</td>
-          <td>R${o.total}</td>
-          <td><span class="status status-${o.status}">${o.status}</span></td>
-        </tr>
-      `).join('');
-    } catch {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger)">Failed to load orders</td></tr>';
-    }
-  });
+  window.addEventListener('load', loadVendorOrders);
 </script>
 
 </body>
