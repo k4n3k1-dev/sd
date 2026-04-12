@@ -13,118 +13,195 @@
   <div class="login-card">
     <div class="logo">🍔</div>
     <h2>Campus Food</h2>
-    <p class="sub">Enter your username to continue</p>
+    <p class="sub">Login to continue</p>
 
     <div class="form-group">
-      <label for="userInput">Username</label>
-      <input id="userInput" type="text" placeholder="admin123 / vendor / student" autocomplete="off">
+      <label for="loginEmail">Email Address</label>
+      <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="off">
+    </div>
+
+    <div class="form-group">
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" placeholder="••••••••">
     </div>
 
     <button class="btn btn-primary btn-full" id="loginBtn">Login</button>
+
+    <p class="sub" style="margin-top: 1rem;">
+      Don't have an account? 
+      <a href="#" id="showSignupBtn" style="color: var(--teal);">Create an account</a>
+    </p>
+  </div>
+</div>
+
+<!-- Signup Modal -->
+<div id="signupModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Create Account</h3>
+      <span class="close">&times;</span>
+    </div>
+    
+    <div class="form-group">
+      <label for="signupUsername">Username</label>
+      <input id="signupUsername" type="text" placeholder="e.g., john_doe">
+    </div>
+
+    <div class="form-group">
+      <label for="signupEmail">Email Address</label>
+      <input id="signupEmail" type="email" placeholder="you@example.com">
+    </div>
+
+    <div class="form-group">
+      <label for="signupPassword">Password</label>
+      <input id="signupPassword" type="password" placeholder="at least 6 characters">
+    </div>
+
+    <div class="form-group">
+      <label for="signupRole">I am a...</label>
+      <select id="signupRole">
+        <option value="student">Student (Order Food)</option>
+        <option value="vendor">Vendor (Sell Food)</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary btn-full" id="signupBtn">Sign Up</button>
   </div>
 </div>
 
 <div id="toast"></div>
 <script src="script.js"></script>
 <script>
-  // Login handler for Supabase
+  // Modal elements
+  const modal = document.getElementById("signupModal");
+  const showSignupBtn = document.getElementById("showSignupBtn");
+  const closeBtn = document.querySelector(".close");
+
+  showSignupBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    modal.style.display = "flex";
+  });
+
+  closeBtn?.addEventListener("click", () => {
+    modal.style.display = "none";
+  });
+
+  window.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      modal.style.display = "none";
+    }
+  });
+
+  // Login handler
   document.getElementById("loginBtn")?.addEventListener("click", async () => {
-    const username = document.getElementById("userInput").value.toLowerCase().trim();
-    if (!username) {
-      toast("Enter your username", "error");
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+
+    if (!email || !password) {
+      toast("Please enter email and password", "error");
       return;
     }
 
-    // Determine role
-    let role = 'student';
-    
-    if (username === 'admin123') {
-      role = 'admin';
-    } else {
-      const { data: vendor } = await sb
-        .from('vendors')
-        .select('*')
-        .eq('username', username)
-        .single();
-      
-      if (vendor) {
-        role = 'vendor';
-        if (vendor.status !== 'approved') {
-          toast('Your account is pending admin approval', 'error');
-          return;
-        }
-      }
-    }
-    
-    const email = `${username}@campusfood.com`;
-    const password = username;
-    
     try {
-      // For admin: ONLY sign in (don't create)
-      if (role === 'admin') {
-        const { data, error } = await sb.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
-        
-        if (error) {
-          toast('Admin account not found. Please check Supabase.', 'error');
-          console.error('Admin login error:', error);
-          return;
-        }
-        
-        sessionStorage.setItem("username", username);
-        sessionStorage.setItem("role", role);
-        
-      } else {
-        // For students/vendors: try sign in, then sign up
-        let { data, error } = await sb.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
-        
-        if (error) {
-          const { data: signUpData, error: signUpError } = await sb.auth.signUp({
-            email: email,
-            password: password,
-            options: { data: { username, role } }
-          });
-          
-          if (signUpError) throw signUpError;
-          
-          if (role === 'vendor') {
-            await sb.from('vendors').insert([{ 
-              id: signUpData.user.id, 
-              username: username, 
-              status: 'pending' 
-            }]);
-            toast('Vendor account created. Waiting for admin approval.', 'error');
-            return;
-          } else if (role === 'student') {
-            await sb.from('students').insert([{ 
-              id: signUpData.user.id, 
-              username: username 
-            }]);
-          }
-          
-          sessionStorage.setItem("username", username);
-          sessionStorage.setItem("role", role);
-        } else {
-          sessionStorage.setItem("username", username);
-          sessionStorage.setItem("role", role);
-        }
-      }
-      
+      const { data, error } = await sb.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (error) throw error;
+
+      const username = data.user.user_metadata?.username || email.split('@')[0];
+      const role = data.user.user_metadata?.role || 'student';
+
+      sessionStorage.setItem("userId", data.user.id);
+      sessionStorage.setItem("email", email);
+      sessionStorage.setItem("username", username);
+      sessionStorage.setItem("role", role);
+
+      toast("Login successful!");
+
       const routes = {
-        admin:   "dashboard_admin.html",
-        vendor:  "dashboard_vendor.html",
+        admin: "dashboard_admin.html",
+        vendor: "dashboard_vendor.html",
         student: "dashboard_student.html",
       };
-      window.location.href = routes[role];
-      
+      window.location.href = routes[role] || "dashboard_student.html";
+
     } catch (err) {
       console.error('Login error:', err);
       toast(err.message || 'Login failed', 'error');
+    }
+  });
+
+  // Signup handler
+  document.getElementById("signupBtn")?.addEventListener("click", async () => {
+    const username = document.getElementById("signupUsername").value.trim();
+    const email = document.getElementById("signupEmail").value.trim();
+    const password = document.getElementById("signupPassword").value;
+    const role = document.getElementById("signupRole").value;
+
+    if (!username || !email || !password) {
+      toast("Please fill in all fields", "error");
+      return;
+    }
+
+    if (password.length < 6) {
+      toast("Password must be at least 6 characters", "error");
+      return;
+    }
+
+    try {
+      const { data, error } = await sb.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            username: username,
+            role: role
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (role === 'vendor') {
+        const { error: insertError } = await sb
+          .from('vendors')
+          .insert([{
+            id: data.user.id,
+            username: username,
+            status: 'pending'
+          }]);
+
+        if (insertError) throw insertError;
+        toast("Vendor account created! Awaiting admin approval. You can now login.", "success");
+
+      } else if (role === 'student') {
+        const { error: insertError } = await sb
+          .from('students')
+          .insert([{
+            id: data.user.id,
+            username: username
+          }]);
+
+        if (insertError) throw insertError;
+        toast("Student account created! You can now login.", "success");
+      }
+
+      // Clear form and close modal
+      document.getElementById("signupUsername").value = "";
+      document.getElementById("signupEmail").value = "";
+      document.getElementById("signupPassword").value = "";
+      modal.style.display = "none";
+
+      // Auto-fill email in login form
+      document.getElementById("loginEmail").value = email;
+      
+      toast("Account created! Please login with your email and password.", "success");
+
+    } catch (err) {
+      console.error('Signup error:', err);
+      toast(err.message || 'Signup failed', 'error');
     }
   });
 </script>
