@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Orders – Campus Food</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <span class="brand">📋 All Orders</span>
+  <button onclick="logout()">Logout</button>
+</nav>
+
+<div class="page">
+  <h2>All Orders (All Vendors)</h2>
+  <div class="panel" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Vendor</th>
+          <th>Student</th>
+          <th>Items</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="allOrdersBody">
+        <tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--muted)">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="script.js"></script>
+<script>
+  window.addEventListener('load', loadAllOrders);
+</script>
+
+</body>
+</html>
