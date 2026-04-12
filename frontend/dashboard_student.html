@@ -11,11 +11,14 @@
 
 <nav class="navbar">
   <span class="brand">🍔 Campus Food — Student</span>
-  <button onclick="logout()">Logout</button>
+  <div class="user-info" style="display: flex; gap: 1rem; align-items: center;">
+    <span>👤 <span id="studentName"></span></span>
+    <button onclick="logout()">Logout</button>
+  </div>
 </nav>
 
 <div class="page">
-  <h2>Welcome, <span id="studentName"></span></h2>
+  <h2>Welcome, <span id="studentNameWelcome"></span></h2>
 
   <div class="cards">
     <a class="card" href="student_orders.html">
@@ -32,8 +35,14 @@
 <div id="toast"></div>
 <script src="script.js"></script>
 <script>
-  document.getElementById('studentName').textContent =
-    sessionStorage.getItem('username') || 'Student';
+  const username = sessionStorage.getItem('username') || 'Student';
+  document.getElementById('studentName').textContent = username;
+  document.getElementById('studentNameWelcome').textContent = username;
+
+  const role = sessionStorage.getItem('role');
+  if (role !== 'student') {
+    window.location.href = 'index.html';
+  }
 </script>
 
 </body>
