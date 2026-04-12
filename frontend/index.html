@@ -27,7 +27,7 @@
 <div id="toast"></div>
 <script src="script.js"></script>
 <script>
-  // Login handler for Supabase
+  // Login handler for Supabase (using 'sb' from script.js)
   document.getElementById("loginBtn")?.addEventListener("click", async () => {
     const username = document.getElementById("userInput").value.toLowerCase().trim();
     if (!username) {
@@ -42,7 +42,7 @@
       role = 'admin';
     } else {
       // Check if username exists in vendors table
-      const { data: vendor } = await supabase
+      const { data: vendor } = await sb
         .from('vendors')
         .select('*')
         .eq('username', username)
@@ -63,14 +63,14 @@
     
     try {
       // Try to sign in
-      let { data, error } = await supabase.auth.signInWithPassword({
+      let { data, error } = await sb.auth.signInWithPassword({
         email: email,
         password: password
       });
       
       if (error) {
         // User doesn't exist, create them
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await sb.auth.signUp({
           email: email,
           password: password,
           options: { data: { username, role } }
@@ -80,7 +80,7 @@
         
         // Create record in appropriate table
         if (role === 'vendor') {
-          await supabase.from('vendors').insert([{ 
+          await sb.from('vendors').insert([{ 
             id: signUpData.user.id, 
             username: username, 
             status: 'pending' 
@@ -88,7 +88,7 @@
           toast('Vendor account created. Waiting for admin approval.', 'error');
           return;
         } else if (role === 'student') {
-          await supabase.from('students').insert([{ 
+          await sb.from('students').insert([{ 
             id: signUpData.user.id, 
             username: username 
           }]);
