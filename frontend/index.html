@@ -27,7 +27,7 @@
 <div id="toast"></div>
 <script src="script.js"></script>
 <script>
-  // Login handler for Supabase (using 'sb' from script.js)
+  // Login handler for Supabase
   document.getElementById("loginBtn")?.addEventListener("click", async () => {
     const username = document.getElementById("userInput").value.toLowerCase().trim();
     if (!username) {
@@ -57,9 +57,11 @@
       }
     }
     
-    // Create email for Supabase Auth
-    const email = `${username}@${role}.local`;
+    // Create email with VALID domain
+    const email = `${username}@campusfood.com`;
     const password = username;
+    
+    console.log("Attempting login with:", { email, password, role });
     
     try {
       // Try to sign in
@@ -69,6 +71,8 @@
       });
       
       if (error) {
+        console.log("Login failed, trying signup:", error.message);
+        
         // User doesn't exist, create them
         const { data: signUpData, error: signUpError } = await sb.auth.signUp({
           email: email,
@@ -99,6 +103,7 @@
         sessionStorage.setItem("role", role);
       } else {
         // Login successful
+        console.log("Login successful!");
         sessionStorage.setItem("username", username);
         sessionStorage.setItem("role", role);
       }
