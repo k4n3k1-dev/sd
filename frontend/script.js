@@ -129,12 +129,18 @@ async function createVendor() {
     return;
   }
 
-  const email = `${username}@vendor.local`;
+  const email = `${username}@campusfood.com`;
   const password = username;
 
   const { data: authData, error: authError } = await sb.auth.signUp({
     email: email,
-    password: password
+    password: password,
+    options: {
+      data: {
+        username: username,
+        role: 'vendor'
+      }
+    }
   });
 
   if (authError) {
