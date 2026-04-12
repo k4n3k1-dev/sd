@@ -11,13 +11,16 @@
 
 <nav class="navbar">
   <span class="brand">📋 All Orders</span>
-  <button onclick="logout()">Logout</button>
+  <div class="user-info" style="display: flex; gap: 1rem; align-items: center;">
+    <span>👤 <span id="adminName"></span></span>
+    <button onclick="logout()">Logout</button>
+  </div>
 </nav>
 
 <div class="page">
   <h2>All Orders (All Vendors)</h2>
   <div class="panel" style="padding:0; overflow:hidden;">
-    <table>
+    <table style="width:100%">
       <thead>
         <tr>
           <th>Order #</th>
@@ -39,6 +42,9 @@
 <div id="toast"></div>
 <script src="script.js"></script>
 <script>
+  const username = sessionStorage.getItem('username') || 'Admin';
+  document.getElementById('adminName').textContent = username;
+
   window.addEventListener('load', loadAllOrders);
 </script>
 
