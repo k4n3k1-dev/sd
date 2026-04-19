@@ -5,7 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Order History – Campus Food</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 1.5rem;
+      margin: 10% auto;
+      width: 320px;
+      text-align: center;
+      border-radius: 10px;
+    }
+
+    .stars span {
+      font-size: 2rem;
+      cursor: pointer;
+      margin: 0 6px;
+      transition: 0.2s;
+    }
+
+    .stars span:hover {
+      transform: scale(1.2);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 <body>
 
@@ -19,6 +54,7 @@
 
 <div class="page">
   <h2>Your Order History</h2>
+
   <div class="panel" style="padding:0; overflow:hidden;">
     <table style="width:100%">
       <thead>
@@ -29,22 +65,127 @@
           <th>Total</th>
           <th>Status</th>
           <th>Date</th>
+          <th>Review</th>
         </tr>
       </thead>
       <tbody id="historyBody">
-        <tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted)">Loading…</td></tr>
+        <tr>
+          <td colspan="7" style="text-align:center;padding:1.5rem;color:var(--muted)">
+            Loading…
+           </td>
+        </tr>
       </tbody>
     </table>
   </div>
 </div>
 
+<!-- Review Modal -->
+<div id="reviewModal" class="modal">
+  <div class="modal-content">
+    <h3>Rate this Order</h3>
+    <div id="stars" class="stars">
+      <span onclick="setRating(1)">☆</span>
+      <span onclick="setRating(2)">☆</span>
+      <span onclick="setRating(3)">☆</span>
+      <span onclick="setRating(4)">☆</span>
+      <span onclick="setRating(5)">☆</span>
+    </div>
+    <br>
+    <button onclick="submitReview()">Submit Review</button>
+    <button onclick="closeReview()">Cancel</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script src="script.js"></script>
+
 <script>
   const username = sessionStorage.getItem('username') || 'Student';
   document.getElementById('studentName').textContent = username;
 
+  let currentOrderId = null;
+  let currentRating = 0;
+  let currentVendorId = null;
+
   window.addEventListener('load', loadStudentOrderHistory);
+
+  function openReview(orderId, vendorId) {
+    currentOrderId = orderId;
+    currentVendorId = vendorId;
+    currentRating = 0;
+    updateStars();
+    document.getElementById('reviewModal').style.display = 'block';
+  }
+
+  function closeReview() {
+    document.getElementById('reviewModal').style.display = 'none';
+    currentOrderId = null;
+    currentVendorId = null;
+  }
+
+  function setRating(rating) {
+    currentRating = rating;
+    updateStars();
+  }
+
+  function updateStars() {
+    const stars = document.querySelectorAll('#stars span');
+    stars.forEach((star, index) => {
+      star.textContent = index < currentRating ? '★' : '☆';
+    });
+  }
+
+  async function submitReview() {
+    if (!currentRating) {
+      alert('Please select a rating');
+      return;
+    }
+
+    if (!currentOrderId || !currentVendorId) {
+      alert('Missing order or vendor information');
+      return;
+    }
+
+    try {
+      // Check if review already exists
+      const { data: existing } = await sb
+        .from('reviews')
+        .select('id')
+        .eq('order_id', currentOrderId)
+        .maybeSingle();
+
+      if (existing) {
+        alert('You have already reviewed this order');
+        closeReview();
+        return;
+      }
+
+      // Submit review to Supabase
+      const { error } = await sb
+        .from('reviews')
+        .insert([{
+          order_id: currentOrderId,
+          vendor_id: currentVendorId,
+          rating: currentRating,
+          student_username: username,
+          created_at: new Date().toISOString()
+        }]);
+
+      if (error) {
+        console.error('Review error:', error);
+        alert('Failed to submit review: ' + error.message);
+        return;
+      }
+
+      alert('Review submitted successfully!');
+      closeReview();
+      loadStudentOrderHistory(); // Refresh the page to show review status
+
+    } catch (err) {
+      console.error('Error:', err);
+      alert('Failed to submit review');
+    }
+  }
 </script>
 
 </body>
