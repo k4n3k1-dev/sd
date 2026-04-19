@@ -3,49 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vendor Dashboard – Campus Food</title>
+  <title>Incoming Orders – Campus Food</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
 <nav class="navbar">
-  <span class="brand">🍔 Campus Food — Vendor</span>
-  <div class="user-info" style="display: flex; gap: 1rem; align-items: center;">
-    <span>👤 <span id="vendorName"></span></span>
-    <button onclick="logout()">Logout</button>
-  </div>
+  <span class="brand">📦 Incoming Orders</span>
+  <button onclick="logout()">Logout</button>
 </nav>
 
 <div class="page">
-  <h2>Welcome, <span id="vendorNameWelcome"></span></h2>
-
-  <div class="cards">
-    <a class="card" href="vendor_menu.html">
-      <div class="icon">🍽️</div>
-      <div class="label">Manage Menu</div>
-    </a>
-    <a class="card" href="vendor_orders.html">
-      <div class="icon">📦</div>
-      <div class="label">My Orders</div>
-    </a>
+  <h2>Orders for <span id="vendorLabel"></span></h2>
+  <div class="panel" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Student</th>
+          <th>Items</th>
+          <th>Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="ordersBody">
+        <tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--muted)">Loading…</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
 <div id="toast"></div>
 <script src="script.js"></script>
 <script>
-  const username = sessionStorage.getItem('username') || 'Vendor';
-  document.getElementById('vendorName').textContent = username;
-  document.getElementById('vendorNameWelcome').textContent = username;
+  const vname = sessionStorage.getItem('username') || '';
+  document.getElementById('vendorLabel').textContent = vname;
 
-  const role = sessionStorage.getItem('role');
-  if (role !== 'vendor') {
-    window.location.href = 'index.html';
-  }
+  window.addEventListener('load', async () => {
+    const tbody = document.getElementById('ordersBody');
+    try {
+      const orders = await apiFetch(`/orders/${vname}`);
+      if (!orders.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--muted)">No orders yet</td></tr>';
+        return;
+      }
+      tbody.innerHTML = orders.map(o => `
+        <tr>
+          <td>#${String(o.id).slice(-5)}</td>
+          <td>${o.student}</td>
+          <td>${o.items.map(i => i.name).join(', ')}</td>
+          <td>R${o.total}</td>
+          <td><span class="status status-${o.status}">${o.status}</span></td>
+        </tr>
+      `).join('');
+    } catch {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger)">Failed to load orders</td></tr>';
+    }
+  });
 </script>
 
 </body>
 </html>
-
-add a button/label on the dashboard, that will take you to the revies page(new  html pgae),, 
