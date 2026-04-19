@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Incoming Orders – Campus Food</title>
+  <title>Vendor Dashboard – Campus Food</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
 <nav class="navbar">
-  <span class="brand">📦 Incoming Orders</span>
+  <span class="brand">🍔 Campus Food — Vendor</span>
   <div class="user-info" style="display: flex; gap: 1rem; align-items: center;">
     <span>👤 <span id="vendorName"></span></span>
     <button onclick="logout()">Logout</button>
@@ -18,66 +18,34 @@
 </nav>
 
 <div class="page">
-  <h2>Orders for <span id="vendorLabel"></span></h2>
+  <h2>Welcome, <span id="vendorNameWelcome"></span></h2>
 
-  <div class="panel" style="padding:0; overflow:hidden;">
-    <table style="width:100%">
-      <thead>
-        <tr>
-          <th>Order ID</th>
-          <th>Student</th>
-          <th>Items</th>
-          <th>Total</th>
-          <th>Status</th>
-          <th>Review</th> <!-- ⭐ NEW COLUMN -->
-          <th>Action</th>
-        </tr>
-      </thead>
-
-      <tbody id="ordersBody">
-        <tr>
-          <td>12345</td>
-          <td>John Doe</td>
-          <td>Burger, Coke</td>
-          <td>R50</td>
-          <td>Completed</td>
-          <td style="color:var(--muted)">No review</td> <!-- Example -->
-          <td><button>View</button></td>
-        </tr>
-
-        <tr>
-          <td>12346</td>
-          <td>Jane Smith</td>
-          <td>Pizza</td>
-          <td>R80</td>
-          <td>Completed</td>
-          <td>
-            ⭐ 5/5<br>
-            <small>Really good!</small>
-          </td>
-          <td><button>View</button></td>
-        </tr>
-
-        <tr>
-          <td colspan="7" style="text-align:center;padding:1.5rem;color:var(--muted)">
-            Loading…
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="cards">
+    <a class="card" href="vendor_menu.html">
+      <div class="icon">🍽️</div>
+      <div class="label">Manage Menu</div>
+    </a>
+    <a class="card" href="vendor_orders.html">
+      <div class="icon">📦</div>
+      <div class="label">My Orders</div>
+    </a>
   </div>
 </div>
 
 <div id="toast"></div>
-
 <script src="script.js"></script>
 <script>
   const username = sessionStorage.getItem('username') || 'Vendor';
   document.getElementById('vendorName').textContent = username;
-  document.getElementById('vendorLabel').textContent = username;
+  document.getElementById('vendorNameWelcome').textContent = username;
 
-  window.addEventListener('load', loadVendorOrders);
+  const role = sessionStorage.getItem('role');
+  if (role !== 'vendor') {
+    window.location.href = 'index.html';
+  }
 </script>
 
 </body>
 </html>
+
+add a button/label on the dashboard, that will take you to the revies page(new  html pgae),, 
