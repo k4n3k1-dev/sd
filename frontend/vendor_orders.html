@@ -5,6 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Incoming Orders – Campus Food</title>
   <link rel="stylesheet" href="style.css">
+
+  <style>
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 1.5rem;
+      margin: 10% auto;
+      width: 320px;
+      text-align: center;
+      border-radius: 10px;
+    }
+
+    .stars span {
+      font-size: 2rem;
+      cursor: pointer;
+      margin: 0 6px;
+      transition: 0.2s;
+    }
+
+    .stars span:hover {
+      transform: scale(1.2);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 <body>
 
@@ -15,6 +51,7 @@
 
 <div class="page">
   <h2>Orders for <span id="vendorLabel"></span></h2>
+
   <div class="panel" style="padding:0; overflow:hidden;">
     <table>
       <thead>
@@ -24,42 +61,148 @@
           <th>Items</th>
           <th>Total</th>
           <th>Status</th>
+          <th>Review</th>
         </tr>
       </thead>
+
       <tbody id="ordersBody">
-        <tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--muted)">Loading…</td></tr>
+        <tr>
+          <td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted)">
+            Loading…
+          </td>
+        </tr>
       </tbody>
     </table>
   </div>
 </div>
 
+<!-- Review Modal -->
+<div id="reviewModal" class="modal">
+  <div class="modal-content">
+    <h3>Rate Order</h3>
+
+    <div id="stars" class="stars">
+      <span onclick="setRating(1)">☆</span>
+      <span onclick="setRating(2)">☆</span>
+      <span onclick="setRating(3)">☆</span>
+      <span onclick="setRating(4)">☆</span>
+      <span onclick="setRating(5)">☆</span>
+    </div>
+
+    <br>
+
+    <button onclick="submitReview()">Submit</button>
+    <button onclick="closeReview()">Cancel</button>
+  </div>
+</div>
+
 <div id="toast"></div>
+
 <script src="script.js"></script>
+
 <script>
   const vname = sessionStorage.getItem('username') || '';
   document.getElementById('vendorLabel').textContent = vname;
 
+  let currentOrderId = null;
+  let currentRating = 0;
+
   window.addEventListener('load', async () => {
     const tbody = document.getElementById('ordersBody');
+
     try {
       const orders = await apiFetch(`/orders/${vname}`);
+
       if (!orders.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--muted)">No orders yet</td></tr>';
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted)">
+              No orders yet
+            </td>
+          </tr>`;
         return;
       }
-      tbody.innerHTML = orders.map(o => `
-        <tr>
-          <td>#${String(o.id).slice(-5)}</td>
-          <td>${o.student}</td>
-          <td>${o.items.map(i => i.name).join(', ')}</td>
-          <td>R${o.total}</td>
-          <td><span class="status status-${o.status}">${o.status}</span></td>
-        </tr>
-      `).join('');
+
+      tbody.innerHTML = orders.map(o => {
+        const isCompleted = o.status === "completed";
+
+        return `
+          <tr>
+            <td>#${String(o.id).slice(-5)}</td>
+            <td>${o.student}</td>
+            <td>${o.items.map(i => i.name).join(', ')}</td>
+            <td>R${o.total}</td>
+            <td>
+              <span class="status status-${o.status}">
+                ${o.status}
+              </span>
+            </td>
+            <td>
+              ${
+                isCompleted
+                  ? `<button onclick="openReview(${o.id})">⭐ Review</button>`
+                  : `<button disabled title="Only available after completion">⭐ Review</button>`
+              }
+            </td>
+          </tr>
+        `;
+      }).join('');
+
     } catch {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger)">Failed to load orders</td></tr>';
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center;color:var(--danger)">
+            Failed to load orders
+          </td>
+        </tr>`;
     }
   });
+
+  function openReview(orderId) {
+    currentOrderId = orderId;
+    currentRating = 0;
+    updateStars();
+    document.getElementById('reviewModal').style.display = 'block';
+  }
+
+  function closeReview() {
+    document.getElementById('reviewModal').style.display = 'none';
+  }
+
+  function setRating(rating) {
+    currentRating = rating;
+    updateStars();
+  }
+
+  function updateStars() {
+    const stars = document.querySelectorAll('#stars span');
+    stars.forEach((star, index) => {
+      star.textContent = index < currentRating ? '★' : '☆';
+    });
+  }
+
+  async function submitReview() {
+    if (!currentRating) {
+      alert('Please select a rating');
+      return;
+    }
+
+    try {
+      await apiFetch(`/reviews`, {
+        method: 'POST',
+        body: JSON.stringify({
+          orderId: currentOrderId,
+          rating: currentRating
+        })
+      });
+
+      closeReview();
+      alert('Review submitted!');
+
+    } catch {
+      alert('Failed to submit review');
+    }
+  }
 </script>
 
 </body>
