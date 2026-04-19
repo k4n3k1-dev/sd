@@ -18,7 +18,20 @@
 </nav>
 
 <div class="page">
+
+  <!-- ⭐ Reviews Section -->
+  <div class="panel">
+    <h2>⭐ Student Reviews</h2>
+    <div id="reviewsContainer">
+      <p style="text-align:center; padding:1rem; color:var(--muted);">
+        No reviews yet
+      </p>
+    </div>
+  </div>
+
+  <!-- Existing Orders Section -->
   <h2>Orders for <span id="vendorLabel"></span></h2>
+
   <div class="panel" style="padding:0; overflow:hidden;">
     <table style="width:100%">
       <thead>
@@ -32,14 +45,20 @@
         </tr>
       </thead>
       <tbody id="ordersBody">
-        <tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted)">Loading…</td></tr>
+        <tr>
+          <td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted)">
+            Loading…
+          </td>
+        </tr>
       </tbody>
     </table>
   </div>
+
 </div>
 
 <div id="toast"></div>
 <script src="script.js"></script>
+
 <script>
   const username = sessionStorage.getItem('username') || 'Vendor';
   document.getElementById('vendorName').textContent = username;
